@@ -1,0 +1,155 @@
+{
+#light "off"
+
+module Lexer
+open Microsoft.FSharp.Text.Lexing
+
+let newline (lexbuf: LexBuffer<_>) =
+	lexbuf.StartPos <- lexbuf.StartPos.NextLine
+
+open Parser
+
+let keywords = [
+		"abort",      ABORT;
+		"abs",        ABS;
+		"abstract",   ABSTRACT;
+		"accept",     ACCEPT;
+		"access",     ACCESS;
+		"aliased",    ALIASED;
+		"all",        ALL;
+		"and",        AND;
+		"array",      ARRAY;
+		"at",         AT;
+		"begin",      BEGIN;
+		"body",       BODY;
+		"case",       CASE;
+		"constant",   CONSTANT;
+		"declare",    DECLARE;
+		"delay",      DELAY;
+		"delta",      DELTA;
+		"digits",     DIGITS;
+		"do",         DO;
+		"else",       ELSE;
+		"elsif",      ELSIF;
+		"end",        END;
+		"entry",      ENTRY;
+		"exception",  EXCEPTION;
+		"exit",       EXIT;
+		"for",        FOR;
+		"function",   FUNCTION;
+		"generic",    GENERIC;
+		"goto",       GOTO;
+		"if",         IF;
+		"in",         IN;
+		"interface",  INTERFACE;
+		"is",         IS;
+		"limited",    LIMITED;
+		"loop",       LOOP;
+		"mod",        MOD;
+		"new",        NEW;
+		"not",        NOT;
+		"null",       NULL;
+		"of",         OF;
+		"or",         OR;
+		"others",     OTHERS;
+		"out",        OUT;
+		"overriding", OVERRIDING;
+		"package",    PACKAGE;
+		"pragma",     PRAGMA;
+		"private",    PRIVATE;
+		"procedure",  PROCEDURE;
+		"protected",  PROTECTED;
+		"raise",      RAISE;
+		"range",      RANGE;
+		"record",     RECORD;
+		"rem",        REM;
+		"renames",    RENAMES;
+		"requeue",    REQUEUE;
+		"return",     RETURN;
+		"reverse",    REVERSE;
+		"select",     SELECT;
+		"separate",   SEPARATE;
+		"some",       SOME;
+		"subtype",    SUBTYPE;
+		"synchronized", SYNCHRONIZED;
+		"tagged",     TAGGED;
+		"task",       TASK;
+		"terminate",  TERMINATE;
+		"then",       THEN;
+		"type",       TYPE;
+		"until",      UNTIL;
+		"use",        USE;
+		"when",       WHEN;
+		"while",      WHILE;
+		"with",       WITH;
+		"xor",        XOR;
+	] |> Map.ofList
+
+	let operators = [
+		"=>", ARROW;
+		"..", DOUBLEDOT;
+		"**", DOUBLESTAR;
+		":=", ASSIGNMENT;
+		"/=", INEQUALITY;
+		">=", GREATEREQUAL;
+		"<=", LESSEQUAL;
+		"<<", LLABEL;
+		">>", RLABEL;
+		"<>", BOX;
+	] |> Map.ofList
+}
+ 
+// regex macros   
+let whitespace = [' ' '\t' ]
+let newline = ('\n' | '\r' '\n')
+
+let letter_uppercase = '\Lu'
+let letter_lowercase = '\Ll'
+let letter_titlecase = '\Lt'
+let letter_modifier = '\Lm'
+let letter_other = '\Lo'
+let mark_non_spacing = '\Mn'
+let mark_spacing_combining = '\Mc'
+let number_decimal = '\Nd'
+let number_letter = '\Nl'
+let punctuation_connector = '\Pc'
+
+let identifier_start = (letter_uppercase | letter_lowercase | letter_titlecase | letter_modifier | letter_other | number_letter)
+let identifier_extend = (mark_non_spacing | mark_spacing_combining | number_decimal | punctuation_connector)
+let identifier = identifier_start (identifier_start | identifier_extend)+
+
+let delimiter = "=>" | ".." | "**" | ":=" | "/=" | ">=" | "<=" | "<<" | ">>" | "<>"
+
+let digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+let numeral = digit ('_'? digit)*
+let exponent = ('E' '+'? numeral) | ('E' '-' numeral)
+let decimal_literal = numeral ('.' numeral)? (exponent)?
+let numeric_literal = decimal_literal //| based_literal
+
+// rules   
+rule tokenstream = parse   
+| whitespace { tokenstream lexbuf }
+| newline { newline lexbuf; tokenstream lexbuf }
+| identifier { match keywords.TryFind((LexBuffer.LexemeString lexbuf).ToLower()) with
+	| Some(token) -> token
+	| None -> IDENTIFIER(LexBuffer.LexemeString lexbuf) }
+| delimiter { operators.[LexBuffer.LexemeString lexbuf] }
+| '&' { AMPERSAND }
+| '\'' { QUOTE }
+| '(' { LPAREN }
+| ')' { RPAREN }
+| '*' { STAR }
+| '+' { PLUS }
+| ',' { COMMA }
+| '-' { MINUS }
+| '.' { PERIOD }
+| '/' { SLASH }
+| ':' { COLON }
+| ';' { SEMICOLON }
+| '<' { LESS }
+| '=' { EQUAL }
+| '>' { GREATER }
+| '|' { PIPE }
+| numeric_literal { NUMERIC_LITERAL(LexBuffer.LexemeString lexbuf) }
+| _ { failwith ("ParseError: " + LexBuffer<_>.LexemeString lexbuf) }
+| eof { Parser.EOF }
