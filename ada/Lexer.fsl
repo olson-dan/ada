@@ -113,6 +113,9 @@ let mark_spacing_combining = '\Mc'
 let number_decimal = '\Nd'
 let number_letter = '\Nl'
 let punctuation_connector = '\Pc'
+let graphic_character = [^ '\n' '\r' ]
+let graphic_character_noquote = [^ '"' '\n' '\r' ]
+let non_eol_character = [^ '\n' '\r' ]
 
 let identifier_start = (letter_uppercase | letter_lowercase | letter_titlecase | letter_modifier | letter_other | number_letter)
 let identifier_extend = (mark_non_spacing | mark_spacing_combining | number_decimal | punctuation_connector)
@@ -124,15 +127,28 @@ let digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
 let numeral = digit ('_'? digit)*
 let exponent = ('E' '+'? numeral) | ('E' '-' numeral)
 let decimal_literal = numeral ('.' numeral)? (exponent)?
-let numeric_literal = decimal_literal //| based_literal
+let extended_digit = digit | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
+let based_numeral = extended_digit ('_'? extended_digit)*
+let base = numeral
+let based_literal = base '#' based_numeral ('.' based_numeral)? '#' (exponent)?
+let numeric_literal = decimal_literal | based_literal
+
+let character_literal = '\'' graphic_character '\''
+
+let string_element = "\"\"" | graphic_character_noquote
+let string_literal = '\"' (string_element)* '\"'
+
+let comment = "--" non_eol_character*
 
 // rules   
 rule tokenstream = parse   
 | whitespace { tokenstream lexbuf }
+| comment { tokenstream lexbuf }
 | newline { newline lexbuf; tokenstream lexbuf }
-| identifier { match keywords.TryFind((LexBuffer.LexemeString lexbuf).ToLower()) with
+| identifier { let s = LexBuffer.LexemeString lexbuf in
+	match keywords.TryFind(s.ToLower()) with
 	| Some(token) -> token
-	| None -> IDENTIFIER(LexBuffer.LexemeString lexbuf) }
+	| None -> IDENTIFIER(s) }
 | delimiter { operators.[LexBuffer.LexemeString lexbuf] }
 | '&' { AMPERSAND }
 | '\'' { QUOTE }
@@ -151,5 +167,7 @@ rule tokenstream = parse
 | '>' { GREATER }
 | '|' { PIPE }
 | numeric_literal { NUMERIC_LITERAL(LexBuffer.LexemeString lexbuf) }
+| character_literal { CHARACTER_LITERAL(LexBuffer.LexemeString lexbuf) }
+| string_literal { STRING_LITERAL(LexBuffer.LexemeString lexbuf) }
 | _ { failwith ("ParseError: " + LexBuffer<_>.LexemeString lexbuf) }
 | eof { Parser.EOF }

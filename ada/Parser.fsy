@@ -82,6 +82,8 @@
 
 %token <string> IDENTIFIER
 %token <string> NUMERIC_LITERAL
+%token <string> CHARACTER_LITERAL
+%token <string> STRING_LITERAL
 %token AMPERSAND
 %token QUOTE
 %token LPAREN
@@ -113,7 +115,133 @@
 %type <string> start
  
 %%   
- 
+
+basic_declaration:
+	| type_declaration {}
+	| subtype_declaration {}
+	| object_declaration {}
+	| number_declaration {}
+	| subprogram_declaration {}
+	| abstract_subprogram_declaration {}
+	| null_procedure_declaration {}
+	| expression_function_declaration {}
+	| package_declaration {}
+	| renaming_declaration {}
+	| exception_declaration {}
+	| generic_declaration {}
+	| generic_instantiation {}
+
+defining_identifier:
+	| IDENTIFIER {}
+
+type_declaration:
+	| full_type_declaration {}
+	| incomplete_type_declaration {}
+	| private_type_declaration {}
+	| private_extension_declaration {}
+
+full_type_declaration:
+	| TYPE defining_identifier known_discriminant_part_opt IS type_definition aspect_specification_opt SEMICOLON {}
+	| task_type_declaration {}
+	| protected_type_declaration {}
+
+type_definition:
+	| enumeration_type_definition {}
+	| integer_type_definition {}
+	| real_type_definition {}
+	| array_type_definition {}
+	| record_type_definition {}
+	| access_type_definition {}
+	| derived_type_definition {}
+	| interface_type_definition {}
+
+subtype_declaration:
+	| SUBTYPE defining_identifier IS subtype_definition aspect_specification_opt SEMICOLON {}
+
+subtype_indication:
+	| null_exclusion_opt subtype_mark constraint_opt {}
+
+subtype_mark:
+	| IDENTIFIER {}
+
+constraint:
+	| scalar_constraint {}
+	| composite_constraint {}
+
+scalar_constraint:
+	| range_constraint {}
+	| digits_constraint {}
+	| delta_constraint {}
+
+composite_constraint:
+	| index_constraint {}
+	| descriminant_constraint {}
+
+aliased_opt:
+	| ALIASED {}
+	| {}
+
+constant_opt:
+	| CONSTANT {}
+	| {}
+
+assign_expression_opt:
+	| ASSIGNMENT expression {}
+	| {}
+
+object_declaration:
+	| defining_identifier_list COLON aliased_opt constant_opt subtype_indication assign_expression_opt aspect_specification_opt SEMICOLON {}
+	| defining_identifier_list COLON aliased_opt constant_opt access_definition assign_expression_opt aspect_specification_opt SEMICOLON {}
+	| defining_identifier_list COLON aliased_opt constant_opt array_type_definition assign_expression_opt aspect_specification_opt SEMICOLON {}
+	| single_task_declaration {}
+	| single_protected_declaration {}
+
+defining_identifier_list:
+	| defining_identifier {}
+	| defining_identifier_list COMMA defining_identifier {}
+
+number_declaration:
+	| defining_identifier_list COLON CONSTANT ASSIGNMENT static_expression SEMICOLON {}
+
+range_constant:
+	| RANGE range {}
+
+range:
+	| range_attibute_reference {}
+	| simple_expression DOUBLEDOT simple_expression {}
+
+enumration_literal_specification_list:
+	| enumeration_literal_specification {}
+	| enumeration_literal_specification_list COMMA enumeration_literal_specification {}
+
+enumeration_type_definition:
+	| LPAREN enumeration_literal_specification_list RPAREN {}
+
+enumeration_literal_specification:
+	| defining_identifier {}
+	| defining_character_literal {}
+
+defining_character_literal:
+	| CHARACTER_LITERAL {}
+
+integer_type_definition:
+	| signed_integer_type_definition {}
+	| modular_type_definition {}
+
+signed_integer_type_definition:
+	| RANGE static_simple_expression DOUBLEDOT static_simple_expression {}
+
+modular_type_definition:
+	| MOD static_expression {}
+
+real_type_definition:
+	| floating_point_definition {}
+	| fixed_point_definition {}
+
+floating_point_definition:
+	| DIGITS static_expression {}
+	| DIGITS static_expression real_range_specification {}
+
 start:   
     | { "Nothing to see here" }   
 %%
