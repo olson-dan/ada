@@ -5,6 +5,7 @@ open System
 open Ast
 open Parser
 open Emit
+open Tests
 
 // http://www.infres.enst.fr/~pautet/Ada95/chap02.htm
 let program = """
@@ -25,8 +26,10 @@ end UglyForm;
 
 [<EntryPoint>]
 let main argv =
-	let ast = [ (AMethod ("UglyForm", [
-		ACall ("Ada.Text_IO.Put", [ AString ("Hello World") ]);
-		ACall ("Ada.Text_IO.New_Line", [ ] ) ] ) ) ] in
-	saveBinary "TestProgram" ast; 0
-	//Console.ReadKey() |> ignore; 0
+	runTests;
+	parse "use Ada.Text_IO;";
+//	let ast = [ (AMethod ("UglyForm", [
+//		ACall ("Ada.Text_IO.Put", [ AString ("Hello World") ]);
+//		ACall ("Ada.Text_IO.New_Line", [ ] ) ] ) ) ] in
+//	saveBinary "TestProgram" ast; 0
+	Console.ReadKey() |> ignore; 0

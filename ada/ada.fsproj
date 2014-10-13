@@ -26,6 +26,7 @@
     <DocumentationFile>bin\Debug\ada.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
     <StartWorkingDirectory>C:\Users\Dan\Projects\</StartWorkingDirectory>
+    <NoWarn>62</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -51,6 +52,10 @@
       <HintPath>..\packages\FsLexYacc.Runtime.6.0.2\lib\net40\FsLexYacc.Runtime.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Fuchu">
+      <HintPath>..\packages\Fuchu.0.4.0.0\lib\Fuchu.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -64,6 +69,7 @@
     <Compile Include="Parser.fs" />
     <Compile Include="Builtins.fs" />
     <Compile Include="Emit.fs" />
+    <Compile Include="Tests.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="packages.config" />
