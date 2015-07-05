@@ -7,6 +7,7 @@ type AExpression =
 	| AMethod of string * AExpression list
 and AValue =
 	| AString of string
+	| AIdentifier of string
 
 type AResult =
 	| ASuccess
