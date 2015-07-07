@@ -28,7 +28,10 @@ let tests =
 			|> List.map (parses numeric_literal));
 		testList "character_literal" (["'A'"; "'*'"; "'''"; "' '"; "'L'"; "'Л'"; "'Λ'"; "'∞'"; "'א'"]
 			|> List.map (parses character_literal));
-		testList "string_literal" (["\"Message of the day:\""; "\"\""; "\" \""; "\"A\""; "\"\"\"\""]
+		testList "string_literal" (["\"Message of the day:\""; "\"\""; "\" \""; "\"A\""; "\"\"\"\"";
+			"\"Characters such as $, %, and } are allowed in string literals\"";
+			"\"Archimedes said \"\"Εύρηκα\"\"\"";
+			"\"Volume of cylinder (πr²h) = \""]
 			|> List.map (parses string_literal));
 		testList "format_effector" (["\t";"\n"] |> List.map (parses format_effector));
 	]
