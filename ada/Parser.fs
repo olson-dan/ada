@@ -10,7 +10,7 @@ open Ast
 let ws = spaces
 
 // Ada defines everything by base unicode categories.  This might be a slow way to parse them but it should catch it all.
-let unicodeCategory category = many1Satisfy (fun c -> CharUnicodeInfo.GetUnicodeCategory(c) = category)
+let unicodeCategory category = satisfy (fun c -> CharUnicodeInfo.GetUnicodeCategory(c) = category) |>> string
 let letter_uppercase : Parser<string,unit> = unicodeCategory UnicodeCategory.UppercaseLetter
 let letter_lowercase : Parser<string,unit> = unicodeCategory UnicodeCategory.LowercaseLetter
 let letter_titlecase : Parser<string,unit> = unicodeCategory UnicodeCategory.TitlecaseLetter
@@ -25,14 +25,27 @@ let other_format : Parser<string,unit> = unicodeCategory UnicodeCategory.Format
 let separator_space : Parser<string,unit> = unicodeCategory UnicodeCategory.SpaceSeparator
 let separator_line : Parser<string,unit> = unicodeCategory UnicodeCategory.LineSeparator
 let separator_paragraph : Parser<string,unit> = unicodeCategory UnicodeCategory.ParagraphSeparator
-let format_effector : Parser<string,unit> = many1Satisfy (function
+let format_effector_check = (function
 		| '\u0009' | '\u000A' | '\u000B' | '\u000C' | '\u000D' | '\u0085' -> true
 		| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.LineSeparator -> true
 		| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.ParagraphSeparator -> true
 		| _ -> false)
+let format_effector : Parser<string,unit> = satisfy format_effector_check |>> string
 let other_control : Parser<string,unit> = unicodeCategory UnicodeCategory.Control
 let other_private_use : Parser<string,unit> = unicodeCategory UnicodeCategory.PrivateUse
 let other_surrogate : Parser<string,unit> = unicodeCategory UnicodeCategory.Surrogate
+
+let graphic_character_check = (function
+	| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.Control -> false
+	| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.PrivateUse -> false
+	| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.Surrogate -> false
+	| c when format_effector_check c -> false
+	| '\uFFFE' | '\uFFFF' -> false
+	| _ -> true)
+let graphic_character : Parser<string,unit> = satisfy graphic_character_check |>> string
+let non_quotation_mark_graphic_character : Parser<string,unit> = satisfy (function
+   | '"' -> false
+	| _ as c -> graphic_character_check c) |>> string
 
 // Actual rules.
 let identifier_start = choice [letter_uppercase; letter_lowercase; letter_titlecase; letter_modifier; letter_other; number_letter]
@@ -65,6 +78,11 @@ let based_literal = pipe5 numeral (pstring "#") based_numeral
 	(fun a b c e f -> a + b + c + (deopt e) + f)
 
 let numeric_literal = (attempt based_literal) <|> decimal_literal
+
+let character_literal = pipe3 (pstring "'") graphic_character (pstring "'") (fun a b c -> a + b + c)
+
+let string_element = (pstring "\"\"") <|> non_quotation_mark_graphic_character
+let string_literal = pipe3 (pstring "\"") (manyStrings string_element) (pstring "\"") (fun a b c -> a + b + c)
 
 let package_name = sepBy identifier (pstring ".") .>> ws //|>> List.map AIdentifier
 let library_unit_name = package_name
