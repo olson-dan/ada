@@ -52,6 +52,20 @@ let decimal_literal : Parser<string,unit> = pipe3 numeral
 	(opt (pipe2 (pstring ".") numeral (fun a b -> a + b)))
 	(opt exponent) (fun a b c -> a + (deopt b) + (deopt c))
 
+let extended_digit : Parser<string,unit> = many1Satisfy (function
+   | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+	| 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
+	| 'a' | 'b' | 'c' | 'd' | 'e' | 'f' -> true
+	| _ -> false)
+let based_numeral : Parser<string,unit> = many1Strings2 extended_digit
+	(extended_digit <|> many1Strings2 (pstring "_") extended_digit)
+let based_literal = pipe5 numeral (pstring "#") based_numeral
+	(opt (pipe2 (pstring ".") based_numeral (fun a b -> a + b)))
+	(pipe2 (pstring "#") (opt exponent) (fun a b -> a + (deopt b)))
+	(fun a b c e f -> a + b + c + (deopt e) + f)
+
+let numeric_literal = (attempt based_literal) <|> decimal_literal
+
 let package_name = sepBy identifier (pstring ".") .>> ws //|>> List.map AIdentifier
 let library_unit_name = package_name
 let use_package_clause = pstring "use" .>> ws >>. sepBy1 package_name (ws >>. pstring "," >>. ws) .>> ws .>> pstring ";"
