@@ -28,7 +28,7 @@ end UglyForm;
 [<EntryPoint>]
 let main argv =
 	runTests () |> ignore;
-	//parse program;
+	parse program;
 //	let ast = [ (AMethod ("UglyForm", [
 //		ACall ("Ada.Text_IO.Put", [ AString ("Hello World") ]);
 //		ACall ("Ada.Text_IO.New_Line", [ ] ) ] ) ) ] in
