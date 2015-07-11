@@ -41,7 +41,7 @@ let delimiter_check = (function
 	| _ -> false)
 let compound_delimiter : Parser<string,unit> = choice [ pstring "=>"; pstring ".."; pstring "**";
 	pstring ":="; pstring "/="; pstring ">="; pstring "<="; pstring "<<"; pstring ">>"; pstring "<>" ]
-let delimiter : Parser<string,unit> = compound_delimiter <|> (satisfy delimiter_check |>> string)
+let delimiter = compound_delimiter <|> (satisfy delimiter_check |>> string) <?> "delimiter" |>> LDelimiter
 
 let graphic_character_check = (function
 	| c when CharUnicodeInfo.GetUnicodeCategory(c) = UnicodeCategory.Control -> false
@@ -58,14 +58,24 @@ let non_quotation_mark_graphic_character : Parser<string,unit> = satisfy (functi
 // Utility
 let deopt = function | Some(a) -> a | None -> ""
 let eol : Parser<string,unit> = many1Strings format_effector_minus_tab
-let sep : Parser<unit,unit> = skipMany (choice [ eol; separator_space; format_effector ])
-let sep1 : Parser<unit,unit> = skipMany1 (choice [ eol; separator_space; format_effector ])
+let sep : Parser<unit,unit> = skipMany (choice [ eol; separator_space; format_effector; other_format ])
+let sep1 : Parser<unit,unit> = skipMany1 (choice [ eol; separator_space; format_effector; other_format ])
 
 // Basic lexical units.  They return themselves since I want to be able to regenerate source from AST.
+let keyword_or_identifier (x : string) = match x.ToLower() with
+	| "abort" | "abs" | "abstract" | "accept" | "access" | "aliased" | "all" | "and" | "array"
+	| "at" | "begin" | "body" | "case" | "constant" | "declare" | "delay" | "delta" | "digits" | "do"
+	| "else" | "elsif" | "end" | "entry" | "exception" | "exit" | "for" | "function" | "generic" | "goto"
+	| "if" | "in" | "interface" | "is" | "limited" | "loop" | "mod" | "new" | "not" | "null" | "of" | "or"
+	| "others" | "out" | "overriding" | "package" | "pragma" | "private" | "procedure" | "protected"
+	| "raise" | "range" | "record" | "rem" | "renames" | "requeue" | "return" | "reverse" | "select"
+	| "separate" | "some" | "subtype" | "synchronized" | "tagged" | "task" | "terminate" | "then"
+	| "type" | "until" | "use" | "when" | "while" | "with" | "xor" -> LKeyword(x)
+	| _ -> LIdentifier(x)
 let identifier_start = choice [letter_uppercase; letter_lowercase; letter_titlecase; letter_modifier; letter_other; number_letter]
 let identifier_extend = choice [mark_non_spacing; mark_spacing_combining; number_decimal; punctuation_connector]
 
-let identifier = many1Strings2 identifier_start (identifier_start <|> identifier_extend)
+let identifier = many1Strings2 identifier_start (identifier_start <|> identifier_extend) <?> "identifier" |>> keyword_or_identifier
 
 let digit : Parser<string,unit> = many1Satisfy (function
 	| '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' -> true
@@ -90,31 +100,17 @@ let based_literal = pipe5 numeral (pstring "#") based_numeral
 	(pipe2 (pstring "#") (opt exponent) (fun a b -> a + (deopt b)))
 	(fun a b c e f -> a + b + c + (deopt e) + f)
 
-let numeric_literal = (attempt based_literal) <|> decimal_literal
+let numeric_literal = (attempt based_literal) <|> decimal_literal <?> "numeric literal" |>> LNumericLiteral
 
-let character_literal = pipe3 (pstring "'") graphic_character (pstring "'") (fun a b c -> a + b + c)
+let character_literal = pipe3 (pstring "'") graphic_character (pstring "'") (fun a b c -> a + b + c) <?> "character literal" |>> LCharacterLiteral
 
 let string_element = (pstring "\"\"") <|> non_quotation_mark_graphic_character
-let string_literal = pipe3 (pstring "\"") (manyStrings string_element) (pstring "\"") (fun a b c -> a + b + c)
+let string_literal = pipe3 (pstring "\"") (manyStrings string_element) (pstring "\"") (fun a b c -> a + b + c) <?> "string literal" |>> LStringLiteral
 
-let comment = pipe2 (pstring "--") (restOfLine false) (fun a b -> a + b)
+let comment = pipe2 (pstring "--") (restOfLine false) (fun a b -> a + b) <?> "comment" |>> LComment
 
-// Actual rules
-//let package_name = sepBy identifier (pstring ".") .>> ws //|>> List.map AIdentifier
-//let library_unit_name = package_name
-//let use_package_clause = pstring "use" .>> ws >>. sepBy1 package_name (ws >>. pstring "," >>. ws) .>> ws .>> pstring ";"
-//let use_clause = use_package_clause
-//let nonlimited_with_clause = pstring "with" .>> ws >>. sepBy1 library_unit_name (ws >>. pstring "," >>. ws) .>> ws .>> pstring ";"
-//let with_clause = nonlimited_with_clause
-
-//let library_item = library_unit_declaration <|> library_unit_body <|> library_unit_renaming_declaration
-//let context_item = with_clause <|> use_clause
-//let context_clause = many context_item
-//let compilation_unit = context_clause //>>. (library_item <|> subunit)
-
-//let compilation = many (ws >>. context_item) .>> eof
-let lexical_element = choice [ (attempt comment); delimiter; (attempt numeric_literal); identifier; character_literal; string_literal ]
-let compilation = many (sep >>. lexical_element .>> sep)
+let lexical_element : Parser<LexicalElement,unit> = choice [ comment; delimiter; (attempt numeric_literal); identifier; character_literal; string_literal ]
+let compilation = many (sep >>. lexical_element .>> sep) .>> eof
 
 let parse str =
 	match run compilation str with
