@@ -8,6 +8,7 @@ open Emit
 open Tests
 
 // http://www.infres.enst.fr/~pautet/Ada95/chap02.htm
+(*
 let program = """
 with Ada.Text_IO;
 use Ada.Text_IO;
@@ -22,6 +23,40 @@ procedure UglyForm is begin
 	Put ("unreadable.");
 	New_Line;
 end UglyForm;
+"""
+*)
+
+// http://cowlark.com/2014-04-27-ada/
+let program = """
+declare
+  pragma Assertion_Policy(Check);
+  subtype StoredValue is integer;
+ 
+  hasvalue: boolean := false;
+  value: StoredValue;
+ 
+  procedure Store(newvalue: StoredValue)
+  with
+    pre => not hasvalue,
+    post => hasvalue
+  is begin
+    value := newvalue;
+    hasvalue := true;
+  end;
+ 
+  function Retrieve return StoredValue
+  with
+    pre => hasvalue,
+    post => not hasvalue
+  is begin
+    hasvalue := false;
+    return value;
+  end;
+ 
+begin
+  Store(42);
+  Store(99); -- throws an exception
+end;
 """
 
 

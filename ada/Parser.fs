@@ -97,6 +97,8 @@ let character_literal = pipe3 (pstring "'") graphic_character (pstring "'") (fun
 let string_element = (pstring "\"\"") <|> non_quotation_mark_graphic_character
 let string_literal = pipe3 (pstring "\"") (manyStrings string_element) (pstring "\"") (fun a b c -> a + b + c)
 
+let comment = pipe2 (pstring "--") (restOfLine false) (fun a b -> a + b)
+
 // Actual rules
 //let package_name = sepBy identifier (pstring ".") .>> ws //|>> List.map AIdentifier
 //let library_unit_name = package_name
@@ -111,7 +113,7 @@ let string_literal = pipe3 (pstring "\"") (manyStrings string_element) (pstring 
 //let compilation_unit = context_clause //>>. (library_item <|> subunit)
 
 //let compilation = many (ws >>. context_item) .>> eof
-let lexical_element = choice [delimiter; identifier; numeric_literal; character_literal; string_literal ]
+let lexical_element = choice [ (attempt comment); delimiter; (attempt numeric_literal); identifier; character_literal; string_literal ]
 let compilation = many (sep >>. lexical_element .>> sep)
 
 let parse str =
